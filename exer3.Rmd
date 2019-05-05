@@ -1,0 +1,349 @@
+---
+title: "Atividade avaliativa 3 - Resampling"
+author: "Jonatas Varella"
+date: "05 de maio de 2019"
+output:
+     pdf_document:
+         latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+library(tidyselect)
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(descr)
+library(readr)
+library(texreg)
+
+```
+
+## Exercício 05
+
+### In Chapter 4, we used logistic regression to predict the probability of default using income and balance on the Default data set. We will now estimate the test error of this logistic regression model using the validation set approach. Do not forget to set a random seed before beginning your analysis. 
+
+**a) Fit a logistic regression model that uses income and balance to predict default.**
+
+```{r 05a}
+options(scipen=999)
+library(ISLR)
+set.seed(1)
+bd = Default
+reg =  glm(default ~ balance + income, data = bd, family = "binomial")
+summary(reg)
+```
+
+**b) Using the validation set approach, estimate the test error of this model. In order to do this, you must perform the following steps:**
+    **i. Split the sample set into a training set and a validation set. 5.4 Exercises 199**
+    **ii. Fit a multiple logistic regression model using only the training observations.**
+    **iii. Obtain a prediction of default status for each individual in the validation set by**
+         **computing the posterior probability of default for that individual, and classifying** 
+         **the individual to the default category if the posterior probability is greater than**
+         **0.5.**
+    **iv. Compute the validation set error, which is the fraction of the observations in the** 
+          **validation set that are misclassified.**
+
+```{r 5bi}
+set.seed(1)
+train = sample(1:nrow(bd), nrow(bd)*.7)
+bd.train = bd[train, ]
+bd.test = bd[-train, ]
+```
+
+```{r 5bii}
+reg1 =  glm(default ~ balance + income, data = bd.train, family = "binomial")
+summary(reg1)
+```
+
+
+```{r 5biii}
+reg.probs = predict(reg1, bd.test, type = "response")
+reg.pred = ifelse(reg.probs > .5, "Yes", "No")
+```
+
+
+```{r 5biv}
+table(reg.pred, bd.test$default)
+mean(reg.pred == bd.test$default)
+```
+
+**(c) Repeat the process in (b) three times, using three different splits of the observations into a training set and a validation set. Comment on the results obtained.**
+
+```{r c1}
+set.seed(2)
+train = sample(1:nrow(bd), nrow(bd)*.7)
+bd.train = bd[train, ]
+bd.test = bd[-train, ]
+reg1 =  glm(default ~ balance + income, data = bd.train, family = "binomial")
+reg.probs = predict(reg1, bd.test, type = "response")
+reg.pred = ifelse(reg.probs > .5, "Yes", "No")
+table(reg.pred, bd.test$default)
+mean(reg.pred == bd.test$default)
+```
+```{r c2}
+set.seed(3)
+train = sample(1:nrow(bd), nrow(bd)*.7)
+bd.train = bd[train, ]
+bd.test = bd[-train, ]
+reg1 =  glm(default ~ balance + income, data = bd.train, family = "binomial")
+reg.probs = predict(reg1, bd.test, type = "response")
+reg.pred = ifelse(reg.probs > .5, "Yes", "No")
+table(reg.pred, bd.test$default)
+mean(reg.pred == bd.test$default)
+```
+
+```{r c3}
+set.seed(4)
+train = sample(1:nrow(bd), nrow(bd)*.7)
+bd.train = bd[train, ]
+bd.test = bd[-train, ]
+reg1 =  glm(default ~ balance + income, data = bd.train, family = "binomial")
+reg.probs = predict(reg1, bd.test, type = "response")
+reg.pred = ifelse(reg.probs > .5, "Yes", "No")
+table(reg.pred, bd.test$default)
+mean(reg.pred == bd.test$default)
+```
+
+*Resposta*
+
+Em ambos os casos, observa-se que o percentual de acerto é de 97%, demonstrando que independente da amostra, os resultados são similares. 
+
+**(d) Now consider a logistic regression model that predicts the probability of default using income, balance, and a dummy variable for student. Estimate the test error for this model using the validation set approach. Comment on whether or not including a dummy variable for student leads to a reduction in the test error rate.**
+
+```{r 5d}
+set.seed(1)
+train = sample(1:nrow(bd), nrow(bd)*.7)
+bd.train = bd[train, ]
+bd.test = bd[-train, ]
+reg2 =  glm(default ~ balance + income + student, data = bd.train, family = "binomial")
+reg.probs = predict(reg2, bd.test, type = "response")
+reg.pred = ifelse(reg.probs > .5, "Yes", "No")
+table(reg.pred, bd.test$default)
+mean(reg.pred == bd.test$default)
+```
+
+*Resposta*
+
+O percentual de acerto é similar entre o modelo com e sem a variavel "student". Ambos com 97%
+
+## Exercício 06
+
+### We continue to consider the use of a logistic regression model to predict the probability of default using income and balance on the Default data set. In particular, we will now compute estimates for the standard errors of the income and balance logistic regression coefficients in two different ways: (1) using the bootstrap, and (2) using the standard formula for computing the standard errors in the glm() function. Do not forget to set a random seed before beginning your analysis.
+
+**a)Using the summary() and glm() functions, determine the estimated standard errors for the coefficients associated with income and balance in a multiple logistic regression model that uses both predictors.**
+
+```{r 6a}
+reg1 =  glm(default ~ balance + income, data = bd, family = "binomial")
+summary(reg1)
+```
+**b)Write a function, boot.fn(), that takes as input the Default data set as well as an index of the observations, and that outputs the coefficient estimates for income and balance in the multiple logistic regression model. **
+
+```{r 6b}
+boot.fn = function(data,index) +
+  return(coef(glm(default ~ balance + income, data = data, family = "binomial", subset = index)))
+```
+
+**c)Use the boot() function together with your boot.fn() function to estimate the standard errors of the logistic regression coefficients for income and balance**
+
+```{r 6c}
+library(boot)
+boot(bd, boot.fn,1000)
+```
+
+**d)Comment on the estimated standard errors obtained using the glm() function and using your bootstrap function.**
+
+Os erros estimados através da função summary() e através da função boot() são similares. 
+
+## Exercício 08
+
+### We will now perform cross-validation on a simulated data set.
+
+**a)Generate a simulated data set as follows:**
+```{r 8a}
+set.seed(1)
+x=rnorm(100)
+y=x-2*x^2+rnorm (100)
+```
+
+*Resposta*
+$n$ = 100
+$p$ (Preditor) = 2
+
+**b) Create a scatterplot of X against Y . Comment on what you find. **
+
+```{r 8b}
+plot(x = x, y = y)
+```
+
+**c) Set a random seed, and then compute the LOOCV errors that result from fitting the following four models using least squares:**
+
+  $$i). Y = β0 + β1X + \epsilon$$ 
+  $$ii).Y = β0 + β1X + β_2X^2  + \epsilon$$ 
+ $$iii).Y = β0 + β1X + β_2X2 β_3X^3 + \epsilon$$
+ $$iv).Y = β0 + β1X + β_2X2 β_3X^3 + β_4X^4   + \epsilon$$
+**Note you may find it helpful to use the data.frame() function to create a single data set containing both X and Y**
+
+```{r 8ci}
+set.seed(1)
+bd2 = data.frame(x,y)
+reg1 = glm(y ~ x)
+cv.glm(bd2, reg1)$delta
+```
+
+```{r 8cii}
+reg2 = glm(y ~ poly(x, 2))
+cv.glm(bd2, reg2)$delta
+```
+ 
+```{r 8ciii}
+reg3 = glm(y ~ poly(x, 3))
+cv.glm(bd2, reg3)$delta
+```
+ 
+```{r 8civ}
+reg4 = glm(y ~ poly(x, 4))
+cv.glm(bd2, reg4)$delta
+```
+
+**d) Repeat (c) using another random seed, and report your results. Are your results the same as what you got in (c)? Why?**
+
+```{r 8di}
+set.seed(2)
+reg1 = glm(y ~ x)
+cv.glm(bd2, reg1)$delta
+```
+
+```{r 8dii}
+reg2 = glm(y ~ poly(x, 2))
+cv.glm(bd2, reg2)$delta
+```
+ 
+```{r 8diii}
+reg3 = glm(y ~ poly(x, 3))
+cv.glm(bd2, reg3)$delta
+```
+ 
+```{r 8div}
+reg4 = glm(y ~ poly(x, 4))
+cv.glm(bd2, reg4)$delta
+```
+ 
+*Resposta*
+
+Os valores são exatamente os mesmos, pois não há aleatoriedade nas divisões do conjunto de treinamento/ teste. 
+
+**e) Which of the models in (c) had the smallest LOOCV error? Is this what you expected? Explain your answer.**
+
+O menor erro é do modelo ii, de: 0.93. O resultado é esperado, uma vez que esse modelo representa a formula verdadeira: $ii).Y = β0 + β1X + β_2X^2  + \epsilon$ 
+
+**f) Comment on the statistical significance of the coefficient estimates that results from fitting each of the models in (c) using least squares. Do these results agree with the conclusions drawn based on the cross-validation results?**
+
+```{r 8f}
+summary(reg4)
+```
+
+**Resposta**
+
+Apenas os modelos linear e quadrático apresentaram signficância estatística. 
+
+## Exercício 09
+
+### We will now consider the Boston housing data set, from the MASS library.
+
+**a)Based on this data set, provide an estimate for the population mean of medv. Call this estimate** $\hat{u}$.
+
+
+```{r 9a}
+library(MASS)
+bd = Boston
+names(bd)
+u_hat = mean(bd$medv)
+```
+*Resposta*
+
+$\hat{u} = 22.5$
+
+**b) Provide an estimate of the standard error of** $\hat{u}$. **Interpret this result. Hint: We can compute the standard error of the sample mean by dividing the sample standard deviation by the square root of the number of observations.**
+ 
+```{r 9b}
+u_err = sd(bd$medv) / sqrt(length(bd$medv))
+```
+*Resposta*
+
+$\sigma^2 = 0.40$
+ 
+**c) Now estimate the standard error of** $\hat{u}$ **using the bootstrap. How does this compare to your answer from (b)?**
+
+
+```{r 9c}
+library(boot)
+boot.fn = function(data, index) + 
+  return(mean(data[index]))
+bootstrap = boot(bd$medv, boot.fn, 1000)
+bootstrap
+```
+
+*Resposta:*
+
+O erro calculado na letra b) foi de 0.40, enquanto utilizando o bootstrap foi de 0.41. Portanto, os valores são similares. 
+
+**d) Based on your bootstrap estimate from (c), provide a 95 % confidence interval for the mean of medv. Compare it to the results obtained using t.test(Boston$medv).Hint: You can approximate a 95 % confidence interval using the formula** $[\hat{u} − 2SE(\hat{u}), \hat{u} + 2SE(\hat{u})]$
+
+**Obs.: Para calcular o intervalo de confiança da letra (d), use a formula CI = [Mu - 1.96*SE(Mu) , Mu + 1.96*SE(Mu)], isto é, use 1,96 ao invés de 2.**
+ 
+```{r 9d}
+CI_up = u_hat + 1.96*u_err 
+CI_low =u_hat - 1.96*u_err
+t.test(bd$medv)
+```
+*Resposta* 
+
+Com a formula: O intervalo de confiança está entre 21.7 e 23.3
+T test: Intervalo de 21.7 e 23.3
+
+Ou seja, os resultado são idênticos. 
+
+**e) Based on this data set, provide an estimate,** $\hat{u}_med$ **, for the median value of medv in the population.**
+
+```{r 9e}
+median(bd$medv)
+```
+*Resposta:*
+
+Mediana = 21.2
+
+**f) We now would like to estimate the standard error of** $\hat{u}_{med}$ **. Unfortunately, there is no simple formula for computing the standard error of the median. Instead, estimate the standard error of the median using the bootstrap. Comment on your findings.**
+
+```{r 9f}
+boot_se = function(data, index) +
+  return(median(data[index]))
+boot(bd$medv, boot_se, R = 1000)
+```
+*Resposta:*
+
+A mediana é de 21.2 e o erro padrão de 0.37
+
+**g) Based on this data set, provide an estimate for the tenth percentile of medv in Boston suburbs. Call this quantity** $\hat{u}_{0.1}$. **(You can use the quantile() function.)**
+
+```{r 9g}
+quantile(bd$medv, 0.1 )
+```
+
+**h) Use the bootstrap to estimate the standard error of ** $\hat{u}_{0.1}$ **. Comment on your findings.**
+
+```{r 9h}
+boot_10 = function(data, index) + 
+  return(quantile(data[index], c(0.1)))
+boot(bd$medv, boot_10, R = 1000)
+```
+
+*Resposta:*
+
+$\hat{u}_{0.1} = 12.75$
+$\sigma\hat{u}_{0.1} = 0.530$
+
+
+
+
